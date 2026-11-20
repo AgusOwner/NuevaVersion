@@ -95,7 +95,19 @@ struct LicenseGateView: View {
             } catch {
                 await MainActor.run {
                     isChecking = false
-                    errorMessage = "Licencia inválida. Verifica tu key."
+                    // TEMP diagnostics: shows the raw KeyAuth error so we can
+                    // tell apart a network failure, an API rejection and a
+                    // decoding error. Remove once licensing is confirmed working.
+                    switch error {
+                    case KeyAuthError.network(let detail):
+                        errorMessage = "Red: \(detail)"
+                    case KeyAuthError.api(let detail):
+                        errorMessage = "KeyAuth: \(detail)"
+                    case KeyAuthError.decoding:
+                        errorMessage = "Respuesta no válida de KeyAuth (decoding)"
+                    default:
+                        errorMessage = "Error desconocido: \(error)"
+                    }
                 }
             }
         }

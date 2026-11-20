@@ -22,12 +22,20 @@ enum KeyAuthService {
             .joined(separator: "&")
         request.httpBody = body.data(using: .utf8)
 
-        let (data, response) = try await URLSession.shared.data(for: request)
+        let (data, response): (Data, URLResponse)
+        do {
+            (data, response) = try await URLSession.shared.data(for: request)
+        } catch {
+            throw KeyAuthError.network("URLSession: \(error.localizedDescription)")
+        }
         guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
-            throw KeyAuthError.network("Bad response")
+            let code = (response as? HTTPURLResponse)?.statusCode ?? -1
+            let bodyPreview = String(data: data.prefix(200), encoding: .utf8) ?? "<non-utf8>"
+            throw KeyAuthError.network("HTTP \(code) — \(bodyPreview)")
         }
         guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
-            throw KeyAuthError.decoding
+            let bodyPreview = String(data: data.prefix(200), encoding: .utf8) ?? "<non-utf8>"
+            throw KeyAuthError.network("Decoding failed, raw body: \(bodyPreview)")
         }
         return json
     }
