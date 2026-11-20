@@ -46,7 +46,8 @@ enum KeyAuthService {
             "ver": KeyAuthConfig.version,
             "hash": "",
             "name": KeyAuthConfig.name,
-            "ownerid": KeyAuthConfig.ownerid
+            "ownerid": KeyAuthConfig.ownerid,
+            "secret": KeyAuthConfig.secret
         ]
         let json = try await post(params: params)
         guard (json["success"] as? Bool) == true else {
