@@ -12,7 +12,14 @@ permissions:
 
 jobs:
   build:
-    runs-on: macos-15
+    # macos-15 trae Xcode 16.4 (SDK hasta iphoneos18.5) — eso compila la app
+    # contra un SDK viejo aunque corra en dispositivos con iOS 27. El runner
+    # xcode-27 (solo Apple Silicon/arm64) trae Xcode 27 con el SDK iphoneos27.1,
+    # que es contra lo que realmente queremos enlazar para dispositivos en
+    # iOS 27.x. Si este runner no está disponible en tu cuenta/organización,
+    # cambia esta línea de vuelta a `macos-15` (el build sigue funcionando,
+    # solo que enlazado contra el SDK viejo).
+    runs-on: xcode-27
     steps:
       - uses: actions/checkout@v4
 
