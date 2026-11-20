@@ -9,6 +9,19 @@ enum KeyAuthError: Error {
 enum KeyAuthService {
     private static var sessionId: String?
 
+    /// Identificador estable del dispositivo para cuando "Force HWID" está
+    /// activado en el panel de KeyAuth. Se genera una vez y se guarda en
+    /// UserDefaults — no cambia entre aperturas de la app.
+    private static var hwid: String {
+        let storageKey = "argent.keyauth.hwid"
+        if let existing = UserDefaults.standard.string(forKey: storageKey) {
+            return existing
+        }
+        let generated = UUID().uuidString
+        UserDefaults.standard.set(generated, forKey: storageKey)
+        return generated
+    }
+
     private static func post(params: [String: String]) async throws -> [String: Any] {
         guard let url = URL(string: KeyAuthConfig.apiBaseURL) else {
             throw KeyAuthError.network("Invalid API URL")
@@ -63,6 +76,7 @@ enum KeyAuthService {
         var params: [String: String] = [
             "type": "license",
             "key": key,
+            "hwid": hwid,
             "name": KeyAuthConfig.name,
             "ownerid": KeyAuthConfig.ownerid
         ]
