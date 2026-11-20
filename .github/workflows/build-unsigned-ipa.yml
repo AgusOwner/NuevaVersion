@@ -21,6 +21,9 @@ jobs:
           xcodebuild -version
           xcodebuild -list -project ThreeOneOSSix.xcodeproj
 
+      - name: Fix script permissions
+        run: chmod +x Tests/*.sh scripts/*.sh
+
       - name: Policy tests
         run: bash Tests/run_policy_tests.sh
 
