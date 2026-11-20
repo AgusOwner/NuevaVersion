@@ -68,6 +68,33 @@ struct ThreeOneOSSixApp: App {
         }
     }
 
+    /// Corre el seeding de parches incluidos en el bundle y el resto del
+    /// arranque post-licencia. Se llama desde dos sitios (ver arriba): el
+    /// `.onAppear` normal (relanzamientos con licencia ya guardada) y el
+    /// cierre de `LicenseGateView` (primer desbloqueo de esta sesión), para
+    /// que ambos caminos queden cubiertos.
+    ///
+    /// Bug real que esto corrige: `BundledPatchSeeder.seedIfNeeded()` copia
+    /// los archivos .3105/.3106 del bundle a PatchProjects/ en disco, pero
+    /// `PatchProjectStore` ya había cargado su lista ANTES de esto (su
+    /// `init()` lanza esa carga en cuanto se crea el `@StateObject`, que es
+    /// antes de que cualquier `.onAppear` se dispare). Sin un `reload()`
+    /// explícito aquí, los parches preinstalados quedaban en disco pero no
+    /// aparecían en "Installed" hasta que alguna otra acción (importar,
+    /// borrar, crear) disparaba un reload por su cuenta.
+    private func runPostLicenseSetup() {
+        let installedCount = BundledPatchSeeder.seedIfNeeded()
+        if installedCount > 0 {
+            patchStore.reload()
+        }
+        if !showOnboarding {
+            appState.detectSupport()
+            checkForUpdate()
+        }
+        migrationTaskCenter.refreshPendingResumes()
+        importSharedConfigPackages()
+    }
+
     private func checkForUpdate() {
         Task {
             guard let offer = await AppUpdateChecker.check() else { return }
@@ -102,6 +129,13 @@ struct ThreeOneOSSixApp: App {
                 } else {
                     LicenseGateView {
                         isLicensed = true
+                        // Primer desbloqueo en esta sesión: el `.onAppear` de
+                        // abajo ya se disparó una vez con isLicensed == false
+                        // (y no se repite solo porque este estado cambie), así
+                        // que si no llamamos esto aquí, el seeding de parches
+                        // y detectSupport() se quedarían sin ejecutar hasta
+                        // que el usuario cierre y vuelva a abrir la app.
+                        runPostLicenseSetup()
                     }
                     .preferredColorScheme(.dark)
                 }
@@ -154,13 +188,7 @@ struct ThreeOneOSSixApp: App {
             }
             .onAppear {
                 guard isLicensed else { return }
-                BundledPatchSeeder.seedIfNeeded()
-                if !showOnboarding {
-                    appState.detectSupport()
-                    checkForUpdate()
-                }
-                migrationTaskCenter.refreshPendingResumes()
-                importSharedConfigPackages()
+                runPostLicenseSetup()
             }
             .onChange(of: scenePhase) { phase in
                 guard phase == .active, !showOnboarding else { return }
